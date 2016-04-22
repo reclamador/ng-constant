@@ -2,9 +2,7 @@
 
 var _ = require('underscore');
 var fs = require('fs');
-var yaml = require('js-yaml');
 var path = require('path');
-var through2 = require('through2');
 
 var TEMPLATE_PATH = path.join(__dirname, 'tpls', 'constant.tpl.ejs');
 var DEFAULT_WRAP_PATH = path.join(__dirname, 'tpls', 'default-wrapper.tpl.ejs');
@@ -16,42 +14,52 @@ var defaultWrapper, amdWrapper, commonjsWrapper, es6Wrapper, tsWrapper;
 
 var defaults = {
   space: '\t',
-  merge: false,
   deps: null,
+  stream: false,
   wrap: false,
   template: undefined,
   templatePath: TEMPLATE_PATH,
 };
 
 function ngConstant(opts) {
+  var ngResult;
   var options = _.assign({}, defaults, opts);
   var template = options.template || readFile(options.templatePath);
-  var stream = through2.obj(objectStream);
 
-  return stream;
+  if (options.stream) {
+    var yaml = require('js-yaml');
+    var through2 = require('through2');
 
-  function objectStream(chunk, enc, callback) {
-    var self = this;
+    ngResult = through2.obj(function (chunk, enc, callback) {
+      try {
+        var data = yaml.safeLoad(chunk.toString());
 
-    try {
-      var data = yaml.safeLoad(chunk.toString());
+        var result = _.template(template)({
+          moduleName: options.name,
+          deps: options.deps,
+          constants: getConstants(data, options),
+        });
 
-      // Create the module string
-      var result = _.template(template)({
-        moduleName: options.name,
-        deps: options.deps,
-        constants: getConstants(data, options),
-      });
+        result = wrap(result, options);
 
-      result = wrap(result, options);
+        this.push(new Buffer(result));
 
-      self.push(new Buffer(result));
+        callback();
+      } catch (err) {
+        callback(err, chunk);
+      }
+    });
+  } else {
+    var result = _.template(template)({
+      moduleName: options.name,
+      deps: options.deps,
+      constants: getConstants({}, options),
+    });
 
-      callback();
-    } catch (err) {
-      callback(err, chunk);
-    }
+    ngResult = wrap(result, options);
   }
+
+  return ngResult;
 }
 
 function getConstants(data, options) {
@@ -59,9 +67,7 @@ function getConstants(data, options) {
     options.constants = JSON.parse(options.constants);
   }
 
-  var dataCnst = data.constants || data;
-  var method = options.merge ? 'assign' : 'extend';
-  var input = _[method]({}, dataCnst, options.constants);
+  var input = _.assign({}, data, options.constants);
 
   var constants = _.map(input, function (value, name) {
     return {

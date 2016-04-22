@@ -6,6 +6,41 @@ Node module that creates an angular constants file from data (like JSON file)
 
 ## Usage
 
+### Default `option.stream = false`
+
+`index.js`
+
+```javascript
+var ngConstant = require('ngConstant');
+
+var file = ngConstant({
+  name: 'app.config',
+  deps: ['ngAnimate'],
+  constants: { john: 'doe' },
+  wrap: 'es6',
+});
+
+console.log(file);
+```
+
+_(output)_
+
+```javascript
+'use strict';
+
+import angular from 'angular';
+
+let env = angular.module("app.config", ["ngAnimate"])
+
+.constant("john", "doe")
+
+;
+
+export default env;
+```
+
+### Stream `options.stream = true`
+
 `index.js`
 
 ```javascript
@@ -18,6 +53,7 @@ fs.createReadStream('app/config.json')
   .pipe(ngConstant({
     name: 'app.config',
     deps: ['ngAnimate'],
+    stream: true,
     constants: { john: 'doe' },
     wrap: 'es6',
   }))
@@ -69,7 +105,15 @@ Overrides: `json.name`
 _optional_
 
 The module name.
-This property will override any `name` property defined in the input `json` file. The default name when used as a transform stream (i.e. regular plugin) is the passed file name.
+This property will override any `name` property defined in the input `json` file.
+
+#### options.stream
+
+Type: `boolean`
+Default: `false`
+_optional_
+
+If true it returns a stream.
 
 #### options.constants
 
@@ -82,16 +126,6 @@ Can be a `JSON` string or an `Object`.
 This property extends the one defined in the input `json` file. If there are
 properties with the same name, this properties will override the ones from the
 input `json` file.
-
-#### options.merge
-
-Type: `boolean`
-Default: `false`
-_optional_
-
-This applies to constants of the Object type.
-If true the constants of type Object from the input file and the constants
-from the configuration will be merged.
 
 #### options.deps
 
