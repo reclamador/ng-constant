@@ -28,6 +28,6 @@
   },
   "devDependencies": {
     "jasmine-node": "^3.0.0",
-    "underscore": "^1.9.2"
+    "lodash": "^4.17.15"
   }
 }
